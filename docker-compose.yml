@@ -1,7 +1,5 @@
-# version: '3.8'
 
 services:
-  # Backend Service - Spring Boot
   backend:
     build:
       context: ./backend
@@ -23,7 +21,6 @@ services:
       - lms-network
     restart: unless-stopped
 
-  # Frontend Service - Vue.js با Nginx
   frontend:
     build:
       context: ./frontend
@@ -37,8 +34,7 @@ services:
     networks:
       - lms-network
     restart: unless-stopped
-
-  # Nginx Reverse Proxy (اختیاری - برای production)
+    
   nginx-proxy:
     image: nginx:alpine
     container_name: lms-proxy
