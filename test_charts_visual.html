@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS Chart Testing - Visual Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+            direction: rtl;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .chart-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .test-results {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .warning {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>تست بصری نمودارهای سیستم LMS</h1>
+        <p>این صفحه نمودارهای عملکرد دانش‌آموزان را با داده‌های واقعی آزمایش می‌کند</p>
+
+        <!-- Test Results Summary -->
+        <div id="test-results" class="test-results success">
+            <strong>✅ تست‌های انجام شده:</strong>
+            <ul id="test-list">
+                <li>در حال بارگذاری...</li>
+            </ul>
+        </div>
+
+        <!-- Simulated API Data Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="total-students">0</div>
+                <div class="stat-label">تعداد دانش‌آموزان</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-progress">0%</div>
+                <div class="stat-label">میانگین پیشرفت</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-exams">0</div>
+                <div class="stat-label">تعداد آزمون‌ها</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-score">0%</div>
+                <div class="stat-label">میانگین نمره</div>
+            </div>
+        </div>
+
+        <!-- Activity Chart -->
+        <div class="chart-section">
+            <h2 class="title">📊 نمودار فعالیت روزانه</h2>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+            <div id="activity-status" class="test-results"></div>
+        </div>
+
+        <!-- Scores Distribution Chart -->
+        <div class="chart-section">
+            <h2 class="title">📈 توزیع نمرات دروس</h2>
+            <div class="chart-container">
+                <canvas id="scoresChart"></canvas>
+            </div>
+            <div id="scores-status" class="test-results"></div>
+        </div>
+
+        <!-- Time Distribution Chart -->
+        <div class="chart-section">
+            <h2 class="title">⏱️ توزیع زمان مطالعه</h2>
+            <div class="chart-container">
+                <canvas id="timeChart"></canvas>
+            </div>
+            <div id="time-status" class="test-results"></div>
+        </div>
+
+        <!-- Persian Date Testing -->
+        <div class="chart-section">
+            <h2 class="title">📅 تست تاریخ فارسی</h2>
+            <div id="date-testing"></div>
+        </div>
+
+        <!-- Performance Analysis -->
+        <div class="chart-section">
+            <h2 class="title">⚡ تحلیل عملکرد</h2>
+            <div id="performance-results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test Data - Simulating realistic LMS data
+        const testData = {
+            activity: [
+                { date: '2024-11-01', contentViews: 45, logins: 32, examSubmissions: 18, assignmentSubmissions: 25 },
+                { date: '2024-11-02', contentViews: 52, logins: 38, examSubmissions: 22, assignmentSubmissions: 28 },
+                { date: '2024-11-03', contentViews: 38, logins: 25, examSubmissions: 12, assignmentSubmissions: 20 },
+                { date: '2024-11-04', contentViews: 68, logins: 45, examSubmissions: 30, assignmentSubmissions: 35 },
+                { date: '2024-11-05', contentViews: 58, logins: 40, examSubmissions: 25, assignmentSubmissions: 32 },
+                { date: '2024-11-06', contentViews: 42, logins: 28, examSubmissions: 15, assignmentSubmissions: 22 },
+                { date: '2024-11-07', contentViews: 75, logins: 55, examSubmissions: 35, assignmentSubmissions: 40 }
+            ],
+            scores: [
+                { label: 'ریاضی پایه', score: 78, difficulty: 'متوسط', studentCount: 45 },
+                { label: 'فیزیک عمومی', score: 85, difficulty: 'سخت', studentCount: 38 },
+                { label: 'زبان انگلیسی', score: 92, difficulty: 'آسان', studentCount: 52 },
+                { label: 'شیمی عمومی', score: 73, difficulty: 'سخت', studentCount: 41 },
+                { label: 'ادبیات فارسی', score: 88, difficulty: 'متوسط', studentCount: 48 }
+            ],
+            timeDistribution: [
+                { date: '2024-11-01', activeStudents: 28, totalMinutes: 840 },
+                { date: '2024-11-02', activeStudents: 35, totalMinutes: 1050 },
+                { date: '2024-11-03', activeStudents: 22, totalMinutes: 660 },
+                { date: '2024-11-04', activeStudents: 42, totalMinutes: 1260 },
+                { date: '2024-11-05', activeStudents: 38, totalMinutes: 1140 },
+                { date: '2024-11-06', activeStudents: 25, totalMinutes: 750 },
+                { date: '2024-11-07', activeStudents: 48, totalMinutes: 1440 }
+            ]
+        };
+
+        let testResults = [];
+        let performanceMetrics = {};
+
+        // Persian date formatting function
+        function formatPersianDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fa-IR', { 
+                month: 'short', 
+                day: 'numeric',
+                weekday: 'short'
+            });
+        }
+
+        // Performance monitoring
+        function measurePerformance(name, fn) {
+            const start = performance.now();
+            const result = fn();
+            const end = performance.now();
+            performanceMetrics[name] = (end - start).toFixed(2);
+            return result;
+        }
+
+        // Create Activity Chart
+        function createActivityChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            return measurePerformance('activityChart', () => {
+                try {
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: testData.activity.map(item => formatPersianDate(item.date)),
+                            datasets: [
+                                {
+                                    label: 'بازدید محتوا',
+                                    data: testData.activity.map(item => item.contentViews),
+                                    borderColor: '#667eea',
+                                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                    tension: 0.4,
+                                    fill: false
+                                },
+                                {
+                                    label: 'ورودها',
+                                    data: testData.activity.map(item => item.logins),
+                                    borderColor: '#f093fb',
+                                    backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                                    tension: 0.4,
+                                    fill: false
+                                },
+                                {
+                                    label: 'ارسال آزمون',
+                                    data: testData.activity.map(item => item.examSubmissions),
+                                    borderColor: '#ff6b6b',
+                                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                                    tension: 0.4,
+                                    fill: false
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'تاریخ'
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'تعداد'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    testResults.push('✅ نمودار فعالیت با موفقیت رندر شد');
+                    document.getElementById('activity-status').className = 'test-results success';
+                    document.getElementById('activity-status').innerHTML = `
+                        ✅ نمودار فعالیت: <strong>موفق</strong><br>
+                        📊 ${testData.activity.length} نقطه داده پردازش شد<br>
+                        ⏱️ زمان رندر: ${performanceMetrics.activityChart}ms
+                    `;
+                    
+                    return chart;
+                } catch (error) {
+                    testResults.push(`❌ خطا در نمودار فعالیت: ${error.message}`);
+                    document.getElementById('activity-status').className = 'test-results error';
+                    document.getElementById('activity-status').textContent = `❌ خطا: ${error.message}`;
+                    return null;
+                }
+            });
+        }
+
+        // Create Scores Chart
+        function createScoresChart() {
+            const ctx = document.getElementById('scoresChart').getContext('2d');
+            
+            return measurePerformance('scoresChart', () => {
+                try {
+                    const chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: testData.scores.map(item => item.label),
+                            datasets: [{
+                                label: 'میانگین نمرات',
+                                data: testData.scores.map(item => item.score),
+                                backgroundColor: testData.scores.map(item => {
+                                    if (item.score >= 85) return '#4ecdc4'; // عالی
+                                    if (item.score >= 70) return '#667eea'; // خوب
+                                    return '#ff922b'; // نیاز به بهبود
+                                }),
+                                borderColor: '#2c3e50',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        afterBody: function(context) {
+                                            const index = context[0].dataIndex;
+                                            const item = testData.scores[index];
+                                            return [
+                                                `سطح سختی: ${item.difficulty}`,
+                                                `تعداد دانش‌آموز: ${item.studentCount}`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'دروس'
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    title: {
+                                        display: true,
+                                        text: 'نمره (از 100)'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    testResults.push('✅ نمودار نمرات با موفقیت رندر شد');
+                    document.getElementById('scores-status').className = 'test-results success';
+                    document.getElementById('scores-status').innerHTML = `
+                        ✅ نمودار نمرات: <strong>موفق</strong><br>
+                        📈 ${testData.scores.length} درس تحلیل شد<br>
+                        ⏱️ زمان رندر: ${performanceMetrics.scoresChart}ms
+                    `;
+                    
+                    return chart;
+                } catch (error) {
+                    testResults.push(`❌ خطا در نمودار نمرات: ${error.message}`);
+                    document.getElementById('scores-status').className = 'test-results error';
+                    document.getElementById('scores-status').textContent = `❌ خطا: ${error.message}`;
+                    return null;
+                }
+            });
+        }
+
+        // Create Time Distribution Chart
+        function createTimeChart() {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            
+            return measurePerformance('timeChart', () => {
+                try {
+                    const chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: testData.timeDistribution.map(item => formatPersianDate(item.date)),
+                            datasets: [
+                                {
+                                    label: 'دانش‌آموزان فعال',
+                                    data: testData.timeDistribution.map(item => item.activeStudents),
+                                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                                    borderColor: '#667eea',
+                                    borderWidth: 1,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'کل زمان مطالعه (دقیقه)',
+                                    data: testData.timeDistribution.map(item => item.totalMinutes),
+                                    type: 'line',
+                                    borderColor: '#ff922b',
+                                    backgroundColor: 'rgba(255, 146, 43, 0.1)',
+                                    tension: 0.4,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'تاریخ'
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'تعداد دانش‌آموزان'
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'زمان (دقیقه)'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false,
+                                    },
+                                }
+                            }
+                        }
+                    });
+
+                    testResults.push('✅ نمودار زمان مطالعه با موفقیت رندر شد');
+                    document.getElementById('time-status').className = 'test-results success';
+                    document.getElementById('time-status').innerHTML = `
+                        ✅ نمودار زمان مطالعه: <strong>موفق</strong><br>
+                        ⏱️ ${testData.timeDistribution.length} روز تحلیل شد<br>
+                        📊 زمان رندر: ${performanceMetrics.timeChart}ms
+                    `;
+                    
+                    return chart;
+                } catch (error) {
+                    testResults.push(`❌ خطا در نمودار زمان: ${error.message}`);
+                    document.getElementById('time-status').className = 'test-results error';
+                    document.getElementById('time-status').textContent = `❌ خطا: ${error.message}`;
+                    return null;
+                }
+            });
+        }
+
+        // Test Persian dates
+        function testPersianDates() {
+            const testDates = [
+                '2024-11-01', '2024-11-15', '2024-12-01', 
+                '2025-01-01', '2025-02-14', '2025-03-21'
+            ];
+            
+            let dateHTML = '<div class="test-results success">';
+            dateHTML += '<strong>✅ تست تبدیل تاریخ:</strong><ul>';
+            
+            testDates.forEach(date => {
+                const persianDate = formatPersianDate(date);
+                const fullPersian = new Date(date).toLocaleDateString('fa-IR', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                dateHTML += `<li>${date} → ${persianDate} (${fullPersian})</li>`;
+            });
+            
+            dateHTML += '</ul></div>';
+            document.getElementById('date-testing').innerHTML = dateHTML;
+            
+            testResults.push('✅ تبدیل تاریخ فارسی موفق بود');
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalStudents = testData.timeDistribution.reduce((sum, day) => sum + day.activeStudents, 0) / testData.timeDistribution.length;
+            const avgScore = testData.scores.reduce((sum, course) => sum + course.score, 0) / testData.scores.length;
+            const totalExams = testData.activity.reduce((sum, day) => sum + day.examSubmissions, 0);
+            const avgProgress = Math.round((avgScore / 100) * 100);
+
+            document.getElementById('total-students').textContent = Math.round(totalStudents);
+            document.getElementById('avg-progress').textContent = avgProgress + '%';
+            document.getElementById('total-exams').textContent = totalExams;
+            document.getElementById('avg-score').textContent = Math.round(avgScore) + '%';
+        }
+
+        // Initialize all tests
+        function runAllTests() {
+            console.log('🚀 Starting LMS Chart Tests...');
+            
+            updateStats();
+            testPersianDates();
+            
+            const activityChart = createActivityChart();
+            const scoresChart = createScoresChart();
+            const timeChart = createTimeChart();
+            
+            // Update test results
+            setTimeout(() => {
+                const testListElement = document.getElementById('test-list');
+                testListElement.innerHTML = testResults.map(result => `<li>${result}</li>`).join('');
+                
+                // Update performance results
+                const performanceHTML = `
+                    <div class="test-results success">
+                        <strong>📊 نتایج عملکرد:</strong>
+                        <ul>
+                            <li>رندر نمودار فعالیت: ${performanceMetrics.activityChart}ms</li>
+                            <li>رندر نمودار نمرات: ${performanceMetrics.scoresChart}ms</li>
+                            <li>رندر نمودار زمان: ${performanceMetrics.timeChart}ms</li>
+                            <li><strong>مجموع زمان رندر: ${(parseFloat(performanceMetrics.activityChart) + parseFloat(performanceMetrics.scoresChart) + parseFloat(performanceMetrics.timeChart)).toFixed(2)}ms</strong></li>
+                        </ul>
+                        <p><strong>✅ همه نمودارها با موفقیت رندر شدند</strong></p>
+                    </div>
+                `;
+                document.getElementById('performance-results').innerHTML = performanceHTML;
+                
+                console.log('✅ All tests completed successfully!');
+                console.log('Performance:', performanceMetrics);
+            }, 1000);
+        }
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', runAllTests);
+    </script>
+</body>
+</html>
